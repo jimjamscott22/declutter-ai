@@ -1,0 +1,7 @@
+{
+  "name": "DeclutterAI - Smart Room Organization & Decluttering Coach",
+  "description": "Upload room photos to get instant AI-powered decluttering plans, hotspot detection, personalized storage solutions, and multi-turn organizing advice.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
