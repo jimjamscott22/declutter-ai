@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const HOST = process.env.HOST || '127.0.0.1';
 
 app.use(express.json({ limit: '25mb' }));
 
@@ -364,8 +365,8 @@ async function setupApp() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`DeclutterAI server listening on http://0.0.0.0:${PORT} (${isProduction ? 'production' : 'development'})`);
+  app.listen(PORT, HOST, () => {
+    console.log(`DeclutterAI server listening on http://${HOST}:${PORT} (${isProduction ? 'production' : 'development'})`);
   });
 }
 
