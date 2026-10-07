@@ -18,7 +18,11 @@ import {
   ChevronRight,
   ShieldAlert,
   Sliders,
-  MessageSquare
+  MessageSquare,
+  Trophy,
+  TrendingUp,
+  CheckCheck,
+  RotateCcw
 } from 'lucide-react';
 import { Hotspot, RoomAnalysisResult, TaskItem } from '../types';
 
@@ -44,12 +48,58 @@ export const RoomAnalysisView: React.FC<RoomAnalysisViewProps> = ({
   const [activeTab, setActiveTab] = useState<'plan' | 'hotspots' | 'triage' | 'storage' | 'habits'>('plan');
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [copiedPlan, setCopiedPlan] = useState<boolean>(false);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   // Compute total and completed tasks
   const allTasks: TaskItem[] = analysis.declutterPhases.flatMap((p) => p.tasks);
   const totalTasks = allTasks.length;
   const completedCount = allTasks.filter((t) => completedTasks.has(t.id)).length;
+  const remainingCount = totalTasks - completedCount;
   const progressPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+
+  // Compute estimated remaining time
+  const remainingMinutes = allTasks
+    .filter((t) => !completedTasks.has(t.id))
+    .reduce((sum, t) => sum + (t.estimatedMinutes || 0), 0);
+
+  // Dynamic status feedback based on percentage
+  const getProgressStatus = (percent: number) => {
+    if (percent === 100) {
+      return {
+        message: '🎉 Extraordinary achievement! All tasks completed — your room has achieved sanctuary status!',
+        color: 'text-emerald-700 dark:text-emerald-300',
+        bgColor: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800',
+      };
+    }
+    if (percent >= 75) {
+      return {
+        message: '🌟 Final stretch! The finish line is in sight and mental clarity is flowing.',
+        color: 'text-teal-700 dark:text-teal-300',
+        bgColor: 'bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800',
+      };
+    }
+    if (percent >= 50) {
+      return {
+        message: '⚡ Halfway milestone reached! The visual static is disappearing rapidly.',
+        color: 'text-amber-700 dark:text-amber-300',
+        bgColor: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
+      };
+    }
+    if (percent >= 25) {
+      return {
+        message: '🌱 Great initial momentum! Surface clutter is clearing and space is opening up.',
+        color: 'text-teal-700 dark:text-teal-300',
+        bgColor: 'bg-teal-50/60 dark:bg-teal-950/30 border-teal-100 dark:border-teal-900',
+      };
+    }
+    return {
+      message: '🏁 Ready to declutter — check off your first task below to watch your progress soar!',
+      color: 'text-stone-600 dark:text-stone-400',
+      bgColor: 'bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-800',
+    };
+  };
+
+  const statusInfo = getProgressStatus(progressPercent);
 
   // Clutter score colors
   const getScoreColor = (score: number) => {
@@ -65,13 +115,14 @@ export const RoomAnalysisView: React.FC<RoomAnalysisViewProps> = ({
 === DeclutterAI Plan for ${analysis.roomType} ===
 Clutter Score: ${analysis.clutterScore}/100 (${analysis.calmnessRating})
 Estimated Time: ${analysis.estimatedTimeMinutes} minutes
+Progress: ${completedCount}/${totalTasks} tasks completed (${progressPercent}%)
 
 Summary:
 ${analysis.roomSummary}
 
 ${analysis.declutterPhases.map((phase) => `
 ${phase.phaseTitle} (Goal: ${phase.goal})
-${phase.tasks.map((t) => `- [ ] ${t.action} (~${t.estimatedMinutes}m): ${t.tips}`).join('\n')}
+${phase.tasks.map((t) => `- [${completedTasks.has(t.id) ? 'x' : ' '}] ${t.action} (~${t.estimatedMinutes}m): ${t.tips}`).join('\n')}
 `).join('\n')}
 
 Daily Micro-Habit:
@@ -150,22 +201,94 @@ ${analysis.dailyMaintenanceHabit}
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-5 border-t border-stone-100 pt-4 dark:border-stone-800">
-          <div className="flex items-center justify-between text-xs font-medium text-stone-600 dark:text-stone-400 mb-1.5">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-              Checklist Completion: {completedCount} of {totalTasks} tasks done
-            </span>
-            <span className="font-bold text-teal-700 dark:text-teal-400">
-              {progressPercent}%
-            </span>
-          </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
+        {/* Enhanced Visual Progress Bar Tracker */}
+        <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
+          <div className="rounded-2xl border border-stone-200/90 bg-gradient-to-b from-stone-50/80 to-white/90 p-4 sm:p-5 shadow-xs dark:border-stone-800 dark:from-stone-900/60 dark:to-stone-900">
+            {/* Metric Header */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3.5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-white shadow-xs">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100">
+                      Declutter Transformation Progress
+                    </h3>
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                      {remainingCount > 0
+                        ? `${remainingCount} task${remainingCount === 1 ? '' : 's'} remaining • Estimated ${remainingMinutes} mins left`
+                        : 'All planned organizing steps completed!'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Stat Badges */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 shadow-xs dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300">
+                  <CheckCheck className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>{completedCount} / {totalTasks} Tasks</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 shadow-xs dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300">
+                  <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>{progressPercent === 100 ? 'Finished!' : `~${remainingMinutes}m left`}</span>
+                </div>
+
+                <div className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-extrabold shadow-xs transition-colors ${
+                  progressPercent === 100
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white animate-pulse'
+                    : progressPercent >= 50
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                    : 'bg-teal-100 text-teal-800 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
+                }`}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{progressPercent}% Complete</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Progress Bar Track */}
+            <div className="relative">
+              <div className="h-4 w-full overflow-hidden rounded-full bg-stone-200/80 p-0.5 shadow-inner dark:bg-stone-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-400 transition-all duration-700 ease-out shadow-sm relative overflow-hidden"
+                  style={{ width: `${progressPercent}%` }}
+                >
+                  {/* Subtle Shimmer Effect on bar */}
+                  <div className="absolute inset-0 bg-white/20 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
+                </div>
+              </div>
+
+              {/* Milestone Checkpoints (25%, 50%, 75%, 100%) */}
+              <div className="mt-2 flex items-center justify-between px-1 text-[10px] font-semibold text-stone-400 dark:text-stone-500">
+                <span className={progressPercent >= 0 ? 'text-teal-700 dark:text-teal-400 font-bold' : ''}>
+                  Start (0%)
+                </span>
+                <span className={progressPercent >= 25 ? 'text-teal-700 dark:text-teal-400 font-bold' : ''}>
+                  25%
+                </span>
+                <span className={progressPercent >= 50 ? 'text-teal-700 dark:text-teal-400 font-bold' : ''}>
+                  Halfway (50%)
+                </span>
+                <span className={progressPercent >= 75 ? 'text-teal-700 dark:text-teal-400 font-bold' : ''}>
+                  75%
+                </span>
+                <span className={progressPercent === 100 ? 'text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-0.5' : ''}>
+                  {progressPercent === 100 && <Trophy className="h-3 w-3 inline text-amber-500" />}
+                  Sanctuary (100%)
+                </span>
+              </div>
+            </div>
+
+            {/* Dynamic Status / Motivation Banner */}
+            <div className={`mt-3.5 flex items-center gap-2.5 rounded-xl border p-2.5 sm:p-3 text-xs ${statusInfo.bgColor}`}>
+              <Sparkles className={`h-4 w-4 shrink-0 ${statusInfo.color}`} />
+              <p className={`font-medium ${statusInfo.color}`}>
+                {statusInfo.message}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -324,26 +447,55 @@ ${analysis.dailyMaintenanceHabit}
           {/* Tab 1: Action Plan & Interactive Checklist */}
           {activeTab === 'plan' && (
             <div className="space-y-4">
-              {analysis.declutterPhases.map((phase) => (
-                <div
-                  key={phase.phaseNumber}
-                  className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs dark:border-stone-800 dark:bg-stone-900"
-                >
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-3 dark:border-stone-800">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                        Phase {phase.phaseNumber}
-                      </span>
-                      <h3 className="text-sm font-extrabold text-stone-900 dark:text-stone-100">
-                        {phase.phaseTitle}
-                      </h3>
-                    </div>
-                    <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600 dark:bg-stone-800 dark:text-stone-300">
-                      Goal: {phase.goal}
-                    </span>
-                  </div>
+              {analysis.declutterPhases.map((phase) => {
+                const phaseCompleted = phase.tasks.filter((t) => completedTasks.has(t.id)).length;
+                const phaseTotal = phase.tasks.length;
+                const phasePercent = phaseTotal > 0 ? Math.round((phaseCompleted / phaseTotal) * 100) : 0;
 
-                  <div className="mt-3 space-y-2.5">
+                return (
+                  <div
+                    key={phase.phaseNumber}
+                    className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xs dark:border-stone-800 dark:bg-stone-900"
+                  >
+                    <div className="border-b border-stone-100 pb-3 dark:border-stone-800">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                              Phase {phase.phaseNumber}
+                            </span>
+                            <span className="text-xs text-stone-400">•</span>
+                            <span className="text-xs text-stone-500 dark:text-stone-400">
+                              Goal: {phase.goal}
+                            </span>
+                          </div>
+                          <h3 className="text-sm font-extrabold text-stone-900 dark:text-stone-100">
+                            {phase.phaseTitle}
+                          </h3>
+                        </div>
+
+                        {/* Phase Progress Badge */}
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            phasePercent === 100
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300'
+                          }`}>
+                            {phaseCompleted}/{phaseTotal} done ({phasePercent}%)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Phase Mini Progress Bar */}
+                      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
+                          style={{ width: `${phasePercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3.5 space-y-2.5">
                     {phase.tasks.map((task) => {
                       const isDone = completedTasks.has(task.id);
                       return (
@@ -394,9 +546,10 @@ ${analysis.dailyMaintenanceHabit}
                     })}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
 
           {/* Tab 2: Hotspot Breakdown */}
           {activeTab === 'hotspots' && (
