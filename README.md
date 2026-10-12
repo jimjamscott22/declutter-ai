@@ -30,6 +30,7 @@ The frontend is a React single-page application. An Express server handles Gemin
 
 - Upload a photo using the file picker or drag-and-drop.
 - Capture a photo using the device camera, subject to browser permissions.
+- Camera tracks stop on cancellation, capture, image replacement, or uploader unmount; obsolete permission responses have their tracks stopped.
 - Choose a sample room image.
 - Set the room type, organizing priority/style, and desired outcome.
 - Generate a structured analysis containing:
@@ -83,7 +84,7 @@ There is no database, user-account system, or authentication layer in the curren
 
 ### Prerequisites
 
-- **Node.js:** A current Node 22 LTS release at or above 22.12 is a practical baseline for Vite 8. Vite also supports the Node 20 line from 20.19; check your resolved packages' engine requirements when installing.
+- **Node.js:** Use Node 22 at or above 22.13, Node 24, or a newer version supported by the resolved packages. The regression suite uses Vitest 5 and jsdom 29; Node 20 is not supported by this test stack.
 - **npm:** Used by the commands below.
 - **Gemini API key:** Create one through [Google AI Studio](https://aistudio.google.com/apikey) and verify access to the models configured in `server.ts`.
 - **Browser:** A modern browser with file-upload support. Camera and clipboard features generally require localhost or an HTTPS secure context.
@@ -283,6 +284,7 @@ Example without an image:
 - Supported UI roles are `architect`, `coach`, and `sprint`; the default is `coach`.
 - Optional `model` overrides the role-based backend model selection. The server currently does not enforce an allowlist.
 - Optional `imageBase64` and `mimeType` attach a photo to the first user turn; MIME type defaults to `image/jpeg`.
+- The frontend preserves the original MIME type through analysis and sample fallback, and forwards it with image-bearing chat requests. New Scan clears both image bytes and MIME metadata.
 - Optional `roomContext` supplies a brief summary, not the full action plan.
 
 Successful response:
@@ -327,6 +329,7 @@ Successful response:
 
 - Analysis sends the selected photo and preferences to the application server and then to Gemini.
 - Chat resends the current image, the full conversation, and a brief room context on every request. This can increase payload size, latency, and API usage.
+- Image-bearing chat requests include the photo's matching MIME type; text-only chat omits image MIME metadata.
 - Quick triage sends the item description and supplied context to Gemini.
 - Uploaded files are base64-encoded without re-encoding or metadata stripping. Embedded EXIF information may therefore remain in the submitted file.
 - Sample thumbnails and downloads contact Unsplash, including on the initial sample-selection screen.
@@ -356,6 +359,7 @@ To clear persisted task completion in this browser, remove the `declutter_comple
 | `npm run preview` | Runs Vite's local frontend build preview; does not start the Express API. |
 | `npm start` | Runs `node server.ts`; requires compatible native TypeScript execution and runtime import behavior. This path has not been validated. |
 | `npm run lint` | Runs `tsc --noEmit`; this is a type check, not an ESLint/style-lint task. |
+| `npm test` | Runs the Vitest regression suite in jsdom, with mocked media devices and network requests. |
 | `npm run clean` | Deletes `dist/` and `server.js`; uses the Unix `rm` command. |
 
 ### Production serving
@@ -388,11 +392,12 @@ The recommended setup binds Express to `127.0.0.1:3000` and proxies the entire a
 
 ## Validation and testing
 
-No automated test suite or `test` script is present in the reviewed repository.
+A Vitest/jsdom regression suite covers camera cancellation, stale permission responses, replacement and unmount cleanup, plus JPEG/PNG/WebP MIME preservation through normal analysis, both sample fallback paths, and New Scan. These tests do not exercise physical cameras or live Gemini requests.
 
 Basic project checks:
 
 ```sh
+npm test
 npm run lint
 npm run build
 ```
@@ -444,13 +449,13 @@ After installing dependencies and configuring a working key:
 
 ## Known limitations and review findings
 
-These are source-based findings, not results of an executed browser test. Priority reflects what should be addressed before a public launch. References point to the relevant implementation.
+The remaining findings below are source-based, not results of an executed browser test. Priority reflects what should be addressed before a public launch. References point to the relevant implementation.
+
+Resolved on 2026-10-07 with automated regression coverage: camera lifecycle cleanup (`src/hooks/useCamera.ts`) and original image MIME preservation through chat (`App.tsx` / `DeclutterChatbot.tsx`). Physical camera and real-browser checks remain unverified. See [the implementation summary](docs/implementation-summary-2026-10-07.md).
 
 | Priority | Finding | Evidence / recommended direction |
 | --- | --- | --- |
 | High | Unauthenticated AI endpoints permit uncontrolled use of the server's API key. | `server.ts` exposes all three AI routes without authentication, rate limiting, or usage budgets; chat also accepts arbitrary model overrides. Add access control, per-user limits, and a model allowlist. |
-| High | Camera tracks can remain active after cancellation or uploader unmount. | `RoomUploader.tsx` sets active state before awaiting `getUserMedia`, accepts a late stream after cancellation, and has no unmount cleanup. Stop obsolete streams and clean up all tracks when leaving the uploader. |
-| Medium | Chat attaches non-JPEG photos with a default JPEG MIME type. | `App.tsx` stores image bytes but not the active MIME type; `DeclutterChatbot.tsx` sends the bytes without `mimeType`, while `server.ts` defaults to `image/jpeg`. Preserve and forward the original MIME type. |
 | Medium | Room changes and chat resets do not isolate request state. | New Scan leaves chat history intact; an in-flight chat request can restore history after Clear Chat. Namespace conversations by scan and abort/invalidate stale responses. |
 | Medium | Completed task IDs leak across plans. | `App.tsx` uses one global local-storage set and does not clear it on New Scan. Scope completion to a persisted analysis/session or reset it for a new plan. |
 | Medium | Input and AI output validation are incomplete. | `server.ts` checks only a few required fields and parses model JSON without independent shape validation; the frontend assumes arrays exist. Validate types, supported images/models/roles, numeric ranges, and the complete result structure before rendering. |
@@ -464,7 +469,7 @@ These are source-based findings, not results of an executed browser test. Priori
 ### Recommended implementation order
 
 1. Secure the AI endpoints and enforce request/response schemas and upload limits.
-2. Fix camera lifecycle cleanup and preserve image MIME type through chat.
+2. Verify the completed camera cleanup and chat MIME fixes on target browsers/devices.
 3. Make requests cancellable/stale-safe and scope chat/task state to an analysis.
 4. Improve accessibility, sample error handling, and accurate model/status messaging.
 5. Keep the dependency lockfile current and validate the production server runtime.
@@ -474,6 +479,6 @@ These are source-based findings, not results of an executed browser test. Priori
 
 Keep the backend schema in `server.ts`, frontend types in `src/types/index.ts`, sample presets, and result UI aligned when adding fields. Keep the chat role/model mapping synchronized between client and server. Never commit API keys or sensitive room photos.
 
-Before submitting a change, run the type check and frontend build, then manually exercise the affected workflows. Changes involving state resets, camera access, or remote requests should include regression tests when test infrastructure is introduced.
+Before submitting a change, run `npm test`, the type check, and frontend build, then manually exercise the affected workflows. Include regression tests for state resets, camera access, and remote request behavior.
 
 No `LICENSE` file was present at review time. Do not assume an open-source license grants reuse rights until the repository owner adds an explicit license.

@@ -15,6 +15,7 @@ import {
 import { SAMPLE_ROOMS } from '../data/sampleRooms';
 import { SampleRoom } from '../types';
 import { fileToBase64, urlToBase64 } from '../utils/imageUtils';
+import { useCamera } from '../hooks/useCamera';
 
 interface RoomUploaderProps {
   onAnalyze: (payload: {
@@ -43,12 +44,9 @@ export const RoomUploader: React.FC<RoomUploaderProps> = ({
   const [priority, setPriority] = useState<string>('Balanced, functional & calming');
   const [goal, setGoal] = useState<string>('Clear visual clutter and create sustainable storage systems');
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  const { videoRef, isCameraActive, cameraError, startCamera, stopCamera } = useCamera();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -63,6 +61,7 @@ export const RoomUploader: React.FC<RoomUploaderProps> = ({
       alert('Please select an image file (JPEG, PNG, WEBP).');
       return;
     }
+    stopCamera();
     setSelectedFile(file);
     setSelectedSample(null);
     setMimeType(file.type || 'image/jpeg');
@@ -75,6 +74,7 @@ export const RoomUploader: React.FC<RoomUploaderProps> = ({
   };
 
   const handleSampleSelected = (sample: SampleRoom) => {
+    stopCamera();
     setSelectedSample(sample);
     setSelectedFile(null);
     setSelectedImage(sample.imageUrl);
@@ -83,24 +83,6 @@ export const RoomUploader: React.FC<RoomUploaderProps> = ({
   };
 
   // Camera capture handlers
-  const startCamera = async () => {
-    try {
-      setCameraError(null);
-      setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err: any) {
-      console.error('Camera access error:', err);
-      setCameraError('Unable to access camera. Please upload an image directly.');
-      setIsCameraActive(false);
-    }
-  };
-
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -116,14 +98,6 @@ export const RoomUploader: React.FC<RoomUploaderProps> = ({
       setMimeType('image/jpeg');
     }
     stopCamera();
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
   };
 
   const handleStartAnalysis = async () => {

@@ -13,6 +13,7 @@ export default function App() {
   const [activeAnalysis, setActiveAnalysis] = useState<RoomAnalysisResult | null>(null);
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   const [activeImageBase64, setActiveImageBase64] = useState<string | null>(null);
+  const [activeImageMimeType, setActiveImageMimeType] = useState<string | null>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
@@ -98,6 +99,7 @@ export default function App() {
           setActiveAnalysis(DEMO_ANALYSIS_PRESETS[payload.presetKey]);
           setActiveImageUrl(payload.imageUrl);
           setActiveImageBase64(payload.imageBase64);
+          setActiveImageMimeType(payload.mimeType);
           setErrorMessage('Note: Displaying verified sample analysis due to API key or quota limit.');
           return;
         }
@@ -112,6 +114,7 @@ export default function App() {
       setActiveAnalysis(data.result);
       setActiveImageUrl(payload.imageUrl);
       setActiveImageBase64(payload.imageBase64);
+      setActiveImageMimeType(payload.mimeType);
 
       if (data.quotaFallback) {
         setErrorMessage('Room analyzed using Gemini 3.5 Flash (free tier). To use the flagship Gemini 3.1 Pro model without rate limits, select a paid API key in settings.');
@@ -123,6 +126,7 @@ export default function App() {
         setActiveAnalysis(DEMO_ANALYSIS_PRESETS[payload.presetKey]);
         setActiveImageUrl(payload.imageUrl);
         setActiveImageBase64(payload.imageBase64);
+        setActiveImageMimeType(payload.mimeType);
         setErrorMessage('Displaying verified room analysis preset.');
       } else {
         const rawMsg = err.message || '';
@@ -142,6 +146,7 @@ export default function App() {
     setActiveAnalysis(null);
     setActiveImageUrl(null);
     setActiveImageBase64(null);
+    setActiveImageMimeType(null);
     setErrorMessage(null);
   };
 
@@ -216,6 +221,7 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
         roomContext={activeAnalysis}
         imageBase64={activeImageBase64}
+        imageMimeType={activeImageMimeType}
       />
 
       {/* Quick Triage Modal */}

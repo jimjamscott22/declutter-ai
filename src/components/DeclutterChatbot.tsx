@@ -22,6 +22,7 @@ interface DeclutterChatbotProps {
   onClose: () => void;
   roomContext: RoomAnalysisResult | null;
   imageBase64: string | null;
+  imageMimeType: string | null;
 }
 
 export const DeclutterChatbot: React.FC<DeclutterChatbotProps> = ({
@@ -29,6 +30,7 @@ export const DeclutterChatbot: React.FC<DeclutterChatbotProps> = ({
   onClose,
   roomContext,
   imageBase64,
+  imageMimeType,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>('');
@@ -116,6 +118,7 @@ export const DeclutterChatbot: React.FC<DeclutterChatbotProps> = ({
               }
             : null,
           imageBase64: imageBase64 || null,
+          ...(imageBase64 && imageMimeType ? { mimeType: imageMimeType } : {}),
         }),
       });
 
